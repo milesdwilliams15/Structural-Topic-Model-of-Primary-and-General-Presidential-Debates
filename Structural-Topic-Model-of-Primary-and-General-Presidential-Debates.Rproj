@@ -1,13 +1,74 @@
-Version: 1.0
+## Structural Topic Model (STM) of Primary & General Presidential Debates (2000-2016)
+# Debate Transcripts stored in: text <- c(R1,...,P15)
+# Metadata stored in: metDat<-data.frame(debateID,year)
+library(stm) # upload stm package from the library
+# Process text data:
+debates<-textProcessor(documents=text,
+                       metadata=metaDat,
+                       verbos=FALSE) # create object of processed data
 
-RestoreWorkspace: Default
-SaveWorkspace: Default
-AlwaysSaveHistory: Default
+# Estimate STM:
+stm1<-stm(documents=debates$documents,
+          vocab=debates$vocab,
+          K=15,
+          prevalence=~debateID+s(year),
+          data=metDat)
+          #convergence reached at 381(k=20), 294(k=15) EM iterations
 
-EnableCodeIndexing: Yes
-UseSpacesForTab: Yes
-NumSpacesForTab: 2
-Encoding: UTF-8
+# Visualize Results Using:
+par(mfcol=c(1,3))
+plot.STM(stm1,type="labels",topics=1:5,width=50,text.cex=1.25)
+plot.STM(stm1,type="labels",topics=6:10,width=50,text.cex=1.25)
+plot.STM(stm1,type="labels",topics=11:15,width=50,text.cex=1.25)
 
-RnwWeave: Sweave
-LaTeX: pdfLaTeX
+# Estimate Model Effects:
+stm1effect<-estimateEffect(formula=1:15~debateID+s(year),
+                           stmobj=stm1,
+                           metadata=metDat)        #smooth the effect of year
+
+# Visualize Estimated Effects:
+plot.estimateEffect(stm1effect,
+                    covariate="debateID",
+                    model=stm1,
+                    topics=stm1effect$topics[1:5]) #makes a pointestimate plot
+
+#makes overlapping continuous plots
+plot.estimateEffect(stm1effect,                    #Topic proportions in Rep. debates
+                    covariate="year",
+                    model=stm1,
+                    topics=stm1effect$topics[10],
+                    method="continuous",
+                    xlab="Election Year",
+                    ylab="Expected Topic Proportions",
+                    moderator="debateID",
+                    moderator.value="Republican",
+                    ylim=c(-.1,.45),
+                    linecol="red",
+                    printlegend=F)
+plot.estimateEffect(stm1effect,                    #Topic proportions in Dem. debates
+                    covariate="year",
+                    model=stm1,
+                    topics=stm1effect$topics[10],
+                    method="continuous",
+                    xlab="Election Year",
+                    ylab="Expected Topic Proportions",
+                    moderator="debateID",
+                    moderator.value="Democrat",
+                    ylim=c(-.1,.45),
+                    linecol="blue",
+                    printlegend=F,add=T)
+plot.estimateEffect(stm1effect,                    #Topic proportions in Pres. debates
+                    covariate="year",
+                    model=stm1,
+                    topics=stm1effect$topics[10],
+                    method="continuous",
+                    xlab="Election Year",
+                    ylab="Expected Topic Proportions",
+                    moderator="debateID",
+                    moderator.value="Presidential",
+                    ylim=c(-.1,.45),
+                    linecol="green",
+                    printlegend=F,add=T)
+
+#Visualize Topic Correlations:
+plot(topicCorr(stm1))
